@@ -1,2 +1,2 @@
 # WebGL
-WebGL Experiments
+WebGL Experiments using fragment and vertex shaders
