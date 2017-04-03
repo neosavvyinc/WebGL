@@ -1,37 +1,13 @@
-<script src=js/gl_utils.js></script>
-
-<body bgcolor=black>
-    <canvas id='canvas1' width='1024' height='720'>
-    </canvas>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGL Series</title>
+</head>
+<body>
+    <ol>
+        <li><a href="html/shaders.html">Vertex and Fragment Shaders</a></li>
+        <li><a href="html/rayTracing.sphere.html">Ray Tracing</a></li>
+    </ol>
 </body>
-
-<script id="vs" type="x-shader/x-vertex">
-   attribute vec3 aPosition;
-   varying   vec3 vPosition;
-   void main() {
-      gl_Position = vec4(aPosition, 1.0);
-      vPosition = aPosition;
-   }
-</script>
-
-<script id="fs" type="x-shader/x-fragment">
-    precision mediump float;
-    uniform float uTime;
-    varying vec3  vPosition;
-
-    void main() {
-        float x = vPosition.x;
-        float y = vPosition.y;
-        float z = vPosition.z;
-        float xTime = uTime * x/sin(uTime);
-        float yTime = uTime * y/sin(uTime);
-        float zTime = uTime * z/sin(uTime);
-        vec3 color = vec3(sin(xTime), sin(yTime), sin(zTime));
-        gl_FragColor = vec4(color, 1.0);
-   }
-</script>
-
-<script>
-    start_gl("canvas1", getStringFromDOMElement('vs'), getStringFromDOMElement('fs'));
-</script>
-
+</html>
