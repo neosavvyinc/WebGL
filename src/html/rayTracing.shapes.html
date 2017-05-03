@@ -1,0 +1,163 @@
+<script src="../js/gl_utils.js"></script>
+
+<body bgcolor=black>
+<canvas id='canvas1' width='800' height='800'>
+</canvas>
+</body>
+
+<script id="vs" type="x-shader/x-vertex">
+   attribute vec3 aPosition;
+   varying   vec3 vPosition;
+   void main() {
+      gl_Position = vec4(aPosition, 1.0);
+      vPosition = aPosition;
+   }
+</script>
+
+<script id="fs" type="x-shader/x-fragment">
+    #define NUM_SPHERES 5
+    #define INFINITY 100000.0
+    precision mediump float;
+    uniform float uTime;
+    varying vec3 vPosition;
+    uniform vec3 uCursor;
+
+    struct Sphere {
+        vec3 center;
+        float radius;
+        vec3 color;
+    };
+
+    struct Ray {
+        vec3 origin;
+        vec3 direction;
+    };
+
+    struct Light {
+        vec3 position;
+        float ambience;
+        vec3 specular;
+        vec3 diffuse;
+    };
+
+    struct RayTracerOutput {
+        Ray reflectedRay;
+        vec3 color;
+    };
+
+    Sphere spheres[NUM_SPHERES];
+    Ray rays[1];
+    Light light[1];
+
+    float epsilon = 0.001;
+
+    void initialize() {
+        float x = vPosition.x;
+        float y = vPosition.y;
+        float z = vPosition.z;
+        float focalLength = 2.0;
+        vec3 color = vec3(0.0, 0.0, 0.0);
+
+        // Create spheres
+        spheres[0].center = vec3(-0.25, 1.5 * sin(uTime), -0.25);
+        spheres[0].radius = 0.3;
+        spheres[0].color = vec3(1.0, 0.0, 0.0);
+
+        spheres[1].center = vec3(0.5 * sin(uTime), 0.25, 0.75);
+        spheres[1].radius = 0.2;
+        spheres[1].color = vec3(0.0, 1.0, 0.0);
+
+        spheres[2].center = vec3(-0.75, 0.0, 0.5);
+        spheres[2].radius = 0.2;
+        spheres[2].color = vec3(0.0, 0.0, 1.0);
+
+        spheres[3].center = vec3(-0.25 , 0.4 * sin(uTime), 0.1* sin(uTime));
+        spheres[3].radius = 0.25;
+        spheres[3].color = vec3(0.0, 1.0, 1.0);
+
+        spheres[4].center = vec3(-1.5, 0.15 * sin(uTime), 0.15 * sin(uTime));
+        spheres[4].radius = 0.35;
+        spheres[4].color = vec3(1.0, 1.0, 0.0);
+
+        // Create ray
+        rays[0].origin = vec3(0.0, 0.0, 4.0);
+        rays[0].direction = normalize(vec3(x-0.5, 0.5-y, -focalLength));
+
+        // Create Light source
+        light[0].position = vec3(uCursor.x, -uCursor.y, 1.0);
+        light[0].ambience = 0.1;
+    }
+
+    float getIntersection(Sphere sphere, Ray ray) {
+        vec3 sphereCenter = sphere.center;
+        vec3 colorOfSphere = sphere.color;
+        float radius = sphere.radius;
+        vec3 cameraSource = ray.origin;
+        vec3 cameraDirection = ray.direction;
+
+        vec3 distanceFromCenter = (cameraSource - sphereCenter);
+        float B = 2.0 * dot(cameraDirection, distanceFromCenter);
+        float C = dot(distanceFromCenter, distanceFromCenter) - pow(radius, 2.0);
+        float delta = pow(B, 2.0) - 4.0 * C;
+        float t = 0.0;
+        if (delta > 0.0) {
+            float sqRoot = sqrt(delta);
+            float t1 = (-B + sqRoot) / 2.0;
+            float t2 = (-B - sqRoot) / 2.0;
+            t = min(t1, t2);
+        }
+        if (delta == 0.0) {
+            t = -B / 2.0;
+        }
+        return t;
+    }
+
+    RayTracerOutput trace(Sphere spheres[NUM_SPHERES], Ray ray, Light light) {
+        RayTracerOutput rayTracer;
+        Ray reflectionRay;
+        Sphere sphereToShow;
+        float minT = INFINITY;
+        vec3 cameraSource = ray.origin;
+        vec3 cameraDirection = ray.direction;
+        vec3 lightSource = light.position;
+        float ambience = light.ambience;
+        vec3 color = vec3(0.0, 0.0, 0.0);
+
+        for (int i=0; i < NUM_SPHERES; i++) {
+            float t = getIntersection(spheres[i], ray);
+            if (t > 0.0 && t < minT) {
+                minT = t;
+                sphereToShow = spheres[i];
+            }
+        }
+
+        vec3 sphereCenter = sphereToShow.center;
+        vec3 colorOfSphere = sphereToShow.color;
+
+        if (minT > 0.0 && minT != INFINITY) {
+            vec3 surfacePoint = cameraSource + (minT * cameraDirection);
+            vec3 surfaceNormal = normalize(surfacePoint - sphereCenter);
+
+            // Reflection
+            vec3 reflection = 2.0 * dot(-ray.direction, surfaceNormal) * surfaceNormal + ray.direction;
+            reflectionRay.origin = surfaceNormal + epsilon * reflection;
+            reflectionRay.direction = reflection;
+            color = colorOfSphere * (ambience + ((1.0 - ambience) * max(0.0, dot(surfaceNormal, lightSource))));
+            rayTracer.color = color;
+            rayTracer.reflectedRay = reflectionRay;
+        }
+        return rayTracer;
+    }
+
+    void main() {
+        initialize();
+        RayTracerOutput rayTracer = trace(spheres, rays[0], light[0]);
+        // Second call to get reflections
+        RayTracerOutput reflection = trace(spheres, rayTracer.reflectedRay, light[0]);
+        gl_FragColor = vec4(rayTracer.color + reflection.color, 1.0);
+   }
+</script>
+
+<script>
+    start_gl("canvas1", getStringFromDOMElement('vs'), getStringFromDOMElement('fs'));
+</script>
